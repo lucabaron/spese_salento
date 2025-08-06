@@ -471,9 +471,9 @@
         <div id="configSection" class="config-section" style="display: none;">
             <h3>⚙️ Configurazione Airtable</h3>
             <p>Inserisci i tuoi dati Airtable per iniziare:</p>
-            <input type="text" id="configBaseId" placeholder="appX1AtLkdMeAAeUd">
-            <input type="text" id="configTableName" placeholder="Spese" value="Spese">
-            <input type="password" id="configApiKey" placeholder="patNk3PAAWyb7Inef.cc6a306a59215f866c901b45fedf5791c94bb83c613be6aa70ac9aa3fbe0c97a">
+            <input type="text" id="configBaseId" placeholder="Base ID (es: appXXXXXXXXXXXXXX)">
+            <input type="text" id="configTableName" placeholder="Nome Tabella (es: Spese)" value="Spese">
+            <input type="password" id="configApiKey" placeholder="Personal Access Token (es: patXXXXXXXXXXXXXX)">
             <button onclick="saveConfig()">Salva e Connetti</button>
             <p style="margin-top: 15px; font-size: 12px; color: #666;">
                 I dati vengono salvati solo localmente nel tuo browser.
@@ -594,6 +594,11 @@
             // Imposta la data di oggi come default
             setDefaultDates();
         }
+
+        // Avvia l'app quando la pagina è caricata
+        window.onload = function() {
+            init();
+        };
 
         function setDefaultDates() {
             const today = getTodayDate();
@@ -932,4 +937,88 @@
                     `;
                     dateGroup.appendChild(dateHeader);
                     
-                    // Sp
+                    // Aggiungi le spese del giorno
+                    groupedExpenses[date].forEach(expense => {
+                        const item = document.createElement('div');
+                        item.className = 'expense-item';
+                        item.innerHTML = `
+                            <div class="expense-info">
+                                <div class="expense-description">${expense.description}</div>
+                                <div class="expense-date">${formatDate(expense.date)}</div>
+                            </div>
+                            <div class="expense-amount">€ ${expense.amount.toFixed(2)}</div>
+                            <div class="expense-actions">
+                                <button class="btn-edit" onclick="editExpense('${person}', '${expense.id}')">✏️</button>
+                                <button class="btn-delete" onclick="deleteExpense('${person}', '${expense.id}')">🗑️</button>
+                            </div>
+                        `;
+                        dateGroup.appendChild(item);
+                    });
+                    
+                    container.appendChild(dateGroup);
+                });
+            });
+            
+            // Calcola totali
+            const lucaTotal = expenses.luca.reduce((sum, exp) => sum + exp.amount, 0);
+            const giuseppeTotal = expenses.giuseppe.reduce((sum, exp) => sum + exp.amount, 0);
+            
+            document.getElementById('luca-total').textContent = `€ ${lucaTotal.toFixed(2)}`;
+            document.getElementById('giuseppe-total').textContent = `€ ${giuseppeTotal.toFixed(2)}`;
+            
+            // Calcola differenza
+            const difference = Math.abs(lucaTotal - giuseppeTotal);
+            const differenceEl = document.getElementById('difference');
+            
+            if (lucaTotal > giuseppeTotal) {
+                differenceEl.innerHTML = `<strong>Luca</strong> ha speso <strong>€ ${difference.toFixed(2)}</strong> in più di Giuseppe`;
+            } else if (giuseppeTotal > lucaTotal) {
+                differenceEl.innerHTML = `<strong>Giuseppe</strong> ha speso <strong>€ ${difference.toFixed(2)}</strong> in più di Luca`;
+            } else {
+                differenceEl.innerHTML = `<strong>Perfetto equilibrio!</strong> Entrambi hanno speso lo stesso importo`;
+            }
+        }
+
+        // Gestione eventi
+        ['luca', 'giuseppe'].forEach(person => {
+            const descInput = document.getElementById(`${person}-description`);
+            const amountInput = document.getElementById(`${person}-amount`);
+            const dateInput = document.getElementById(`${person}-date`);
+            
+            if (descInput) {
+                descInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        amountInput.focus();
+                    }
+                });
+            }
+            
+            if (amountInput) {
+                amountInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        addExpense(person);
+                    }
+                });
+            }
+        });
+
+        // Modal events
+        document.getElementById('edit-description').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('edit-amount').focus();
+            }
+        });
+        
+        document.getElementById('edit-amount').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveEdit();
+            }
+        });
+
+        // Chiudi modal cliccando fuori
+        document.getElementById('editModal').addEventListener('click', (e) => {
+            if (e.target.id === 'editModal') {
+                closeEditModal();
+            }
+        });
+    </script>
