@@ -47,6 +47,40 @@
             font-size: 24px;
             font-weight: bold;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .sync-status {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        .sync-dot.syncing {
+            background: #fbbf24;
+        }
+
+        .sync-dot.error {
+            background: #f87171;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .main-content {
@@ -90,8 +124,17 @@
 
         .add-expense {
             display: flex;
+            flex-direction: column;
             gap: 10px;
             margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
         }
 
         input {
@@ -108,8 +151,8 @@
             border-color: #667eea;
         }
 
-        input[type="number"] {
-            max-width: 120px;
+        input[type="number"], input[type="date"] {
+            max-width: 150px;
         }
 
         button {
@@ -132,9 +175,38 @@
             transform: translateY(0);
         }
 
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .expense-list {
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
+        }
+
+        .date-group {
+            margin-bottom: 20px;
+        }
+
+        .date-header {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .date-total {
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
         }
 
         .expense-item {
@@ -143,10 +215,15 @@
             align-items: center;
             padding: 12px;
             margin-bottom: 8px;
-            background: #f8f9fa;
+            background: #ffffff;
             border-radius: 8px;
+            border-left: 4px solid #667eea;
             transition: all 0.3s;
             animation: fadeIn 0.3s ease-out;
+        }
+
+        .giuseppe-section .expense-item {
+            border-left-color: #764ba2;
         }
 
         @keyframes fadeIn {
@@ -161,8 +238,9 @@
         }
 
         .expense-item:hover {
-            background: #e9ecef;
+            background: #f8f9fa;
             transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .expense-info {
@@ -172,6 +250,12 @@
         .expense-description {
             font-weight: 500;
             color: #333;
+            margin-bottom: 4px;
+        }
+
+        .expense-date {
+            font-size: 12px;
+            color: #666;
         }
 
         .expense-amount {
@@ -292,6 +376,50 @@
             background: #6c757d;
         }
 
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        .refresh-btn {
+            background: #10b981;
+            padding: 8px 15px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .config-section {
+            background: #fffbeb;
+            border: 2px solid #fbbf24;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
+        }
+
+        .config-section h3 {
+            color: #92400e;
+            margin-bottom: 15px;
+        }
+
+        .config-section input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .config-section button {
+            width: 100%;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -312,6 +440,21 @@
                 padding-bottom: 15px;
                 margin-bottom: 15px;
             }
+
+            .sync-status {
+                position: static;
+                transform: none;
+                margin-top: 10px;
+                justify-content: center;
+            }
+
+            .input-row {
+                flex-direction: column;
+            }
+
+            input[type="number"], input[type="date"] {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -319,17 +462,40 @@
     <div class="container">
         <div class="header">
             💰 Tracker Spese 💰
+            <div class="sync-status">
+                <span class="sync-dot" id="syncDot"></span>
+                <span id="syncText">Connesso</span>
+            </div>
         </div>
         
-        <div class="main-content">
+        <div id="configSection" class="config-section" style="display: none;">
+            <h3>⚙️ Configurazione Airtable</h3>
+            <p>Inserisci i tuoi dati Airtable per iniziare:</p>
+            <input type="text" id="configBaseId" placeholder="Base ID (es: appXXXXXXXXXXXXXX)">
+            <input type="text" id="configTableName" placeholder="Nome Tabella (es: Spese)" value="Spese">
+            <input type="password" id="configApiKey" placeholder="Personal Access Token (es: patXXXXXXXXXXXXXX)">
+            <button onclick="saveConfig()">Salva e Connetti</button>
+            <p style="margin-top: 15px; font-size: 12px; color: #666;">
+                I dati vengono salvati solo localmente nel tuo browser.
+            </p>
+        </div>
+        
+        <div id="errorContainer"></div>
+        
+        <div class="main-content" id="mainContent" style="display: none;">
             <div class="person-section luca-section">
                 <div class="person-header">
                     <div class="person-name">👤 Luca</div>
                 </div>
                 <div class="add-expense">
-                    <input type="text" id="luca-description" placeholder="Descrizione spesa...">
-                    <input type="number" id="luca-amount" placeholder="€" step="0.01">
-                    <button onclick="addExpense('luca')">Aggiungi</button>
+                    <div class="input-row">
+                        <input type="text" id="luca-description" placeholder="Descrizione spesa...">
+                        <input type="number" id="luca-amount" placeholder="€" step="0.01">
+                    </div>
+                    <div class="input-row">
+                        <input type="date" id="luca-date">
+                        <button onclick="addExpense('luca')" id="luca-add-btn">Aggiungi</button>
+                    </div>
                 </div>
                 <div class="expense-list" id="luca-expenses"></div>
             </div>
@@ -339,17 +505,22 @@
                     <div class="person-name">👤 Giuseppe</div>
                 </div>
                 <div class="add-expense">
-                    <input type="text" id="giuseppe-description" placeholder="Descrizione spesa...">
-                    <input type="number" id="giuseppe-amount" placeholder="€" step="0.01">
-                    <button onclick="addExpense('giuseppe')">Aggiungi</button>
+                    <div class="input-row">
+                        <input type="text" id="giuseppe-description" placeholder="Descrizione spesa...">
+                        <input type="number" id="giuseppe-amount" placeholder="€" step="0.01">
+                    </div>
+                    <div class="input-row">
+                        <input type="date" id="giuseppe-date">
+                        <button onclick="addExpense('giuseppe')" id="giuseppe-add-btn">Aggiungi</button>
+                    </div>
                 </div>
                 <div class="expense-list" id="giuseppe-expenses"></div>
             </div>
         </div>
         
-        <div class="difference" id="difference"></div>
+        <div class="difference" id="difference" style="display: none;"></div>
         
-        <div class="totals">
+        <div class="totals" id="totals" style="display: none;">
             <div class="total-section">
                 <div class="total-label">Totale Luca</div>
                 <div class="total-amount" id="luca-total">€ 0.00</div>
@@ -359,6 +530,12 @@
                 <div class="total-amount" id="giuseppe-total">€ 0.00</div>
             </div>
         </div>
+
+        <div style="text-align: center; padding: 10px;">
+            <button class="refresh-btn" onclick="loadExpenses()" style="display: none;" id="refreshBtn">
+                🔄 Aggiorna Dati
+            </button>
+        </div>
     </div>
 
     <div class="edit-modal" id="editModal">
@@ -367,6 +544,7 @@
             <div class="modal-inputs">
                 <input type="text" id="edit-description" placeholder="Descrizione...">
                 <input type="number" id="edit-amount" placeholder="Importo €" step="0.01">
+                <input type="date" id="edit-date">
             </div>
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeEditModal()">Annulla</button>
@@ -376,147 +554,419 @@
     </div>
 
     <script>
-        // Struttura dati per le spese
-        let expenses = {
-            luca: [],
-            giuseppe: []
+        // Configurazione Airtable
+        let AIRTABLE_CONFIG = {
+            baseId: '',
+            tableName: 'Spese',
+            apiKey: ''
         };
 
-        let currentEditIndex = null;
+        // Stato dell'applicazione
+        let expenses = { luca: [], giuseppe: [] };
+        let currentEditRecord = null;
         let currentEditPerson = null;
 
-        // Carica dati da localStorage al caricamento della pagina
-        function loadData() {
-            const saved = localStorage.getItem('expenses');
-            if (saved) {
-                try {
-                    expenses = JSON.parse(saved);
-                } catch (e) {
-                    console.error('Errore nel caricamento dei dati:', e);
+        // Funzione per ottenere la data di oggi in formato YYYY-MM-DD
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Inizializzazione
+        function init() {
+            // Carica configurazione da localStorage
+            const savedConfig = localStorage.getItem('airtableConfig');
+            if (savedConfig) {
+                AIRTABLE_CONFIG = JSON.parse(savedConfig);
+                if (AIRTABLE_CONFIG.baseId && AIRTABLE_CONFIG.apiKey) {
+                    showMainInterface();
+                    loadExpenses();
+                } else {
+                    showConfigSection();
                 }
+            } else {
+                showConfigSection();
             }
-            updateUI();
+
+            // Imposta la data di oggi come default
+            setDefaultDates();
         }
 
-        // Salva dati in localStorage
-        function saveData() {
+        // Avvia l'app quando la pagina è caricata
+        window.onload = function() {
+            init();
+        };
+
+        function setDefaultDates() {
+            const today = getTodayDate();
+            ['luca', 'giuseppe'].forEach(person => {
+                const dateInput = document.getElementById(`${person}-date`);
+                if (dateInput) {
+                    dateInput.value = today;
+                }
+            });
+        }
+
+        function showConfigSection() {
+            document.getElementById('configSection').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('difference').style.display = 'none';
+            document.getElementById('totals').style.display = 'none';
+            document.getElementById('refreshBtn').style.display = 'none';
+        }
+
+        function showMainInterface() {
+            document.getElementById('configSection').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'flex';
+            document.getElementById('difference').style.display = 'block';
+            document.getElementById('totals').style.display = 'flex';
+            document.getElementById('refreshBtn').style.display = 'inline-block';
+        }
+
+        function saveConfig() {
+            const baseId = document.getElementById('configBaseId').value.trim();
+            const tableName = document.getElementById('configTableName').value.trim() || 'Spese';
+            const apiKey = document.getElementById('configApiKey').value.trim();
+
+            if (!baseId || !apiKey) {
+                alert('Inserisci Base ID e Personal Access Token');
+                return;
+            }
+
+            AIRTABLE_CONFIG = { baseId, tableName, apiKey };
+            localStorage.setItem('airtableConfig', JSON.stringify(AIRTABLE_CONFIG));
+            
+            showMainInterface();
+            createTableIfNeeded();
+        }
+
+        // Crea la tabella se non esiste (Airtable richiede che esista già)
+        async function createTableIfNeeded() {
+            // Prima proviamo a caricare i dati
+            loadExpenses();
+        }
+
+        function updateSyncStatus(status) {
+            const dot = document.getElementById('syncDot');
+            const text = document.getElementById('syncText');
+            
+            switch(status) {
+                case 'syncing':
+                    dot.className = 'sync-dot syncing';
+                    text.textContent = 'Sincronizzazione...';
+                    break;
+                case 'error':
+                    dot.className = 'sync-dot error';
+                    text.textContent = 'Errore';
+                    break;
+                case 'success':
+                default:
+                    dot.className = 'sync-dot';
+                    text.textContent = 'Sincronizzato';
+                    break;
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('errorContainer').innerHTML = 
+                `<div class="error-message">${message}</div>`;
+            updateSyncStatus('error');
+            setTimeout(() => {
+                document.getElementById('errorContainer').innerHTML = '';
+            }, 5000);
+        }
+
+        // Carica tutte le spese da Airtable
+        async function loadExpenses() {
+            updateSyncStatus('syncing');
+            
             try {
-                localStorage.setItem('expenses', JSON.stringify(expenses));
-            } catch (e) {
-                console.error('Errore nel salvataggio dei dati:', e);
-                alert('Impossibile salvare i dati. Il browser potrebbe non supportare localStorage.');
+                const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${AIRTABLE_CONFIG.tableName}?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${AIRTABLE_CONFIG.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showError('Tabella non trovata. Crea una tabella chiamata "Spese" in Airtable con i campi: Persona (Single line text), Descrizione (Single line text), Importo (Number), Data (Date)');
+                    } else if (response.status === 401) {
+                        showError('Token non valido. Verifica il Personal Access Token.');
+                    } else {
+                        showError(`Errore: ${response.status}`);
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                
+                // Resetta le spese
+                expenses = { luca: [], giuseppe: [] };
+                
+                // Organizza le spese per persona
+                data.records.forEach(record => {
+                    const fields = record.fields;
+                    if (fields.Persona && fields.Descrizione && fields.Importo) {
+                        const person = fields.Persona.toLowerCase();
+                        if (person === 'luca' || person === 'giuseppe') {
+                            expenses[person].push({
+                                id: record.id,
+                                description: fields.Descrizione,
+                                amount: fields.Importo,
+                                date: fields.Data || getTodayDate()
+                            });
+                        }
+                    }
+                });
+
+                updateUI();
+                updateSyncStatus('success');
+            } catch (error) {
+                console.error('Errore nel caricamento:', error);
+                showError('Errore di connessione. Verifica la configurazione.');
             }
         }
 
-        // Aggiungi spesa
-        function addExpense(person) {
+        // Aggiungi una spesa
+        async function addExpense(person) {
             const descriptionInput = document.getElementById(`${person}-description`);
             const amountInput = document.getElementById(`${person}-amount`);
+            const dateInput = document.getElementById(`${person}-date`);
+            const addBtn = document.getElementById(`${person}-add-btn`);
             
             const description = descriptionInput.value.trim();
             const amount = parseFloat(amountInput.value);
+            const date = dateInput.value || getTodayDate();
             
             if (!description || isNaN(amount) || amount <= 0) {
                 alert('Inserisci una descrizione valida e un importo maggiore di 0');
                 return;
             }
-            
-            expenses[person].push({
-                description: description,
-                amount: amount,
-                date: new Date().toISOString()
-            });
-            
-            descriptionInput.value = '';
-            amountInput.value = '';
-            
-            saveData();
-            updateUI();
-        }
 
-        // Elimina spesa
-        function deleteExpense(person, index) {
-            if (confirm('Sei sicuro di voler eliminare questa spesa?')) {
-                expenses[person].splice(index, 1);
-                saveData();
-                updateUI();
+            // Disabilita il bottone durante l'invio
+            addBtn.disabled = true;
+            updateSyncStatus('syncing');
+
+            try {
+                const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${AIRTABLE_CONFIG.tableName}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${AIRTABLE_CONFIG.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fields: {
+                            'Persona': person.charAt(0).toUpperCase() + person.slice(1),
+                            'Descrizione': description,
+                            'Importo': amount,
+                            'Data': date
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Errore: ${response.status}`);
+                }
+
+                // Pulisci i campi
+                descriptionInput.value = '';
+                amountInput.value = '';
+                dateInput.value = getTodayDate();
+                
+                // Ricarica i dati
+                await loadExpenses();
+                
+            } catch (error) {
+                console.error('Errore nell\'aggiunta:', error);
+                showError('Errore nell\'aggiunta della spesa. Riprova.');
+            } finally {
+                addBtn.disabled = false;
             }
         }
 
-        // Apri modal modifica
-        function editExpense(person, index) {
+        // Elimina una spesa
+        async function deleteExpense(person, recordId) {
+            if (!confirm('Sei sicuro di voler eliminare questa spesa?')) {
+                return;
+            }
+
+            updateSyncStatus('syncing');
+
+            try {
+                const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${AIRTABLE_CONFIG.tableName}/${recordId}`;
+                
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${AIRTABLE_CONFIG.apiKey}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Errore: ${response.status}`);
+                }
+
+                // Ricarica i dati
+                await loadExpenses();
+                
+            } catch (error) {
+                console.error('Errore nell\'eliminazione:', error);
+                showError('Errore nell\'eliminazione della spesa. Riprova.');
+            }
+        }
+
+        // Apri modal per modificare
+        function editExpense(person, recordId) {
+            const expense = expenses[person].find(e => e.id === recordId);
+            if (!expense) return;
+
             currentEditPerson = person;
-            currentEditIndex = index;
+            currentEditRecord = recordId;
             
-            const expense = expenses[person][index];
             document.getElementById('edit-description').value = expense.description;
             document.getElementById('edit-amount').value = expense.amount;
+            document.getElementById('edit-date').value = expense.date;
             
             document.getElementById('editModal').classList.add('active');
         }
 
-        // Chiudi modal modifica
+        // Chiudi modal
         function closeEditModal() {
             document.getElementById('editModal').classList.remove('active');
             currentEditPerson = null;
-            currentEditIndex = null;
+            currentEditRecord = null;
         }
 
         // Salva modifiche
-        function saveEdit() {
-            if (currentEditPerson === null || currentEditIndex === null) return;
+        async function saveEdit() {
+            if (!currentEditRecord) return;
             
             const description = document.getElementById('edit-description').value.trim();
             const amount = parseFloat(document.getElementById('edit-amount').value);
+            const date = document.getElementById('edit-date').value;
             
             if (!description || isNaN(amount) || amount <= 0) {
                 alert('Inserisci una descrizione valida e un importo maggiore di 0');
                 return;
             }
-            
-            expenses[currentEditPerson][currentEditIndex] = {
-                description: description,
-                amount: amount,
-                date: expenses[currentEditPerson][currentEditIndex].date
-            };
-            
-            saveData();
-            updateUI();
-            closeEditModal();
+
+            updateSyncStatus('syncing');
+
+            try {
+                const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${AIRTABLE_CONFIG.tableName}/${currentEditRecord}`;
+                
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${AIRTABLE_CONFIG.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fields: {
+                            'Descrizione': description,
+                            'Importo': amount,
+                            'Data': date
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Errore: ${response.status}`);
+                }
+
+                closeEditModal();
+                await loadExpenses();
+                
+            } catch (error) {
+                console.error('Errore nella modifica:', error);
+                showError('Errore nella modifica della spesa. Riprova.');
+            }
         }
 
-        // Aggiorna interfaccia
+        // Formatta la data per la visualizzazione
+        function formatDate(dateStr) {
+            if (!dateStr) return 'Oggi';
+            const date = new Date(dateStr + 'T00:00:00');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('it-IT', options);
+        }
+
+        // Aggiorna l'interfaccia
         function updateUI() {
-            // Aggiorna liste spese
             ['luca', 'giuseppe'].forEach(person => {
                 const container = document.getElementById(`${person}-expenses`);
+                if (!container) return;
+                
                 container.innerHTML = '';
                 
-                expenses[person].forEach((expense, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'expense-item';
-                    item.innerHTML = `
-                        <div class="expense-info">
-                            <div class="expense-description">${expense.description}</div>
-                        </div>
-                        <div class="expense-amount">€ ${expense.amount.toFixed(2)}</div>
-                        <div class="expense-actions">
-                            <button class="btn-edit" onclick="editExpense('${person}', ${index})">✏️</button>
-                            <button class="btn-delete" onclick="deleteExpense('${person}', ${index})">🗑️</button>
-                        </div>
+                // Raggruppa le spese per data
+                const groupedExpenses = {};
+                expenses[person].forEach(expense => {
+                    const date = expense.date || getTodayDate();
+                    if (!groupedExpenses[date]) {
+                        groupedExpenses[date] = [];
+                    }
+                    groupedExpenses[date].push(expense);
+                });
+                
+                // Ordina le date (più recenti prima)
+                const sortedDates = Object.keys(groupedExpenses).sort((a, b) => b.localeCompare(a));
+                
+                // Crea i gruppi nell'interfaccia
+                sortedDates.forEach(date => {
+                    const dateGroup = document.createElement('div');
+                    dateGroup.className = 'date-group';
+                    
+                    // Calcola il totale del giorno
+                    const dayTotal = groupedExpenses[date].reduce((sum, exp) => sum + exp.amount, 0);
+                    
+                    // Header della data
+                    const dateHeader = document.createElement('div');
+                    dateHeader.className = 'date-header';
+                    dateHeader.innerHTML = `
+                        <span>📅 ${formatDate(date)}</span>
+                        <span class="date-total">€ ${dayTotal.toFixed(2)}</span>
                     `;
-                    container.appendChild(item);
+                    dateGroup.appendChild(dateHeader);
+                    
+                    // Aggiungi le spese del giorno
+                    groupedExpenses[date].forEach(expense => {
+                        const item = document.createElement('div');
+                        item.className = 'expense-item';
+                        item.innerHTML = `
+                            <div class="expense-info">
+                                <div class="expense-description">${expense.description}</div>
+                                <div class="expense-date">${formatDate(expense.date)}</div>
+                            </div>
+                            <div class="expense-amount">€ ${expense.amount.toFixed(2)}</div>
+                            <div class="expense-actions">
+                                <button class="btn-edit" onclick="editExpense('${person}', '${expense.id}')">✏️</button>
+                                <button class="btn-delete" onclick="deleteExpense('${person}', '${expense.id}')">🗑️</button>
+                            </div>
+                        `;
+                        dateGroup.appendChild(item);
+                    });
+                    
+                    container.appendChild(dateGroup);
                 });
             });
             
-            // Calcola e aggiorna totali
+            // Calcola totali
             const lucaTotal = expenses.luca.reduce((sum, exp) => sum + exp.amount, 0);
             const giuseppeTotal = expenses.giuseppe.reduce((sum, exp) => sum + exp.amount, 0);
             
             document.getElementById('luca-total').textContent = `€ ${lucaTotal.toFixed(2)}`;
             document.getElementById('giuseppe-total').textContent = `€ ${giuseppeTotal.toFixed(2)}`;
             
-            // Calcola e mostra differenza
+            // Calcola differenza
             const difference = Math.abs(lucaTotal - giuseppeTotal);
             const differenceEl = document.getElementById('difference');
             
@@ -529,22 +979,30 @@
             }
         }
 
-        // Gestione tasti Enter per aggiungere spese
+        // Gestione eventi
         ['luca', 'giuseppe'].forEach(person => {
-            document.getElementById(`${person}-description`).addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    document.getElementById(`${person}-amount`).focus();
-                }
-            });
+            const descInput = document.getElementById(`${person}-description`);
+            const amountInput = document.getElementById(`${person}-amount`);
+            const dateInput = document.getElementById(`${person}-date`);
             
-            document.getElementById(`${person}-amount`).addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    addExpense(person);
-                }
-            });
+            if (descInput) {
+                descInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        amountInput.focus();
+                    }
+                });
+            }
+            
+            if (amountInput) {
+                amountInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        addExpense(person);
+                    }
+                });
+            }
         });
 
-        // Gestione tasti Enter nel modal
+        // Modal events
         document.getElementById('edit-description').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 document.getElementById('edit-amount').focus();
@@ -563,9 +1021,4 @@
                 closeEditModal();
             }
         });
-
-        // Carica dati all'avvio
-        loadData();
     </script>
-</body>
-</html>
